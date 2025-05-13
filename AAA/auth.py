@@ -3,10 +3,10 @@ import jwt
 import bcrypt
 from flask import jsonify, request
 from config import JWT_SECRET_KEY
-import mysql.connector  # O cualquier otro conector de base de datos
+import mysql.connector  
 
 def obtener_conexion_db():
-    # Estos valores deberían estar en variables de entorno
+    
     return mysql.connector.connect(
         host=os.environ.get('DB_HOST', 'localhost'),
         user=os.environ.get('DB_USER', 'usuario_app'),
@@ -35,7 +35,7 @@ def login():
         conn = obtener_conexion_db()
         cursor = conn.cursor(dictionary=True)
         
-        # Consulta segura usando parámetros para evitar inyección SQL
+        
         cursor.execute(
             "SELECT id, username, password_hash, rol FROM usuarios WHERE username = %s",
             (username,)
