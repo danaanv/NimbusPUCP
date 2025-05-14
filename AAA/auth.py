@@ -1,17 +1,23 @@
 from datetime import datetime, timedelta
 import jwt
 import bcrypt
-from flask import jsonify, request
-from config import JWT_SECRET_KEY
+from flask import Flask, jsonify, request
 import mysql.connector  
+import os
+import requests
+
+app = Flask(__name__)
+app.config['JWT_SECRET_KEY'] = "clave_super_secreta_123"
+
+JWT_SECRET_KEY = "clave_super_secreta_123"
 
 def obtener_conexion_db():
     
     return mysql.connector.connect(
         host=os.environ.get('DB_HOST', 'localhost'),
-        user=os.environ.get('DB_USER', 'usuario_app'),
-        password=os.environ.get('DB_PASSWORD', ''),
-        database=os.environ.get('DB_NAME', 'mi_aplicacion')
+        user=os.environ.get('DB_USER', 'root'),
+        password=os.environ.get('DB_PASSWORD', 'hemmo1996'),
+        database=os.environ.get('DB_NAME', 'infraestructura_cloud')
     )
 
 def generar_token(usuario):
@@ -29,7 +35,7 @@ def login():
     password = auth_data.get('password')
     
     if not username or not password:
-        return jsonify({'error': 'Se requieren nombre de usuario y contraseña'}), 400
+        return jsonify({'error': 'Se requieren nombre de usuario y contrasena'}), 400
     
     try:
         conn = obtener_conexion_db()
@@ -37,7 +43,7 @@ def login():
         
         
         cursor.execute(
-            "SELECT id, username, password_hash, rol FROM usuarios WHERE username = %s",
+            "SELECT id, username, password, rol FROM usuarios WHERE username = %s",
             (username,)
         )
         
@@ -47,10 +53,10 @@ def login():
         
         # si no hay usuario 
         if not usuario_db:
-            return jsonify({'error': 'Credenciales inválidas'}), 401
+            return jsonify({'error': 'Credenciales invalidas'}), 401
             
         # verifica contrasena 
-        if bcrypt.checkpw(password.encode('utf-8'), usuario_db['password_hash'].encode('utf-8')):
+        if bcrypt.checkpw(password.encode('utf-8'), usuario_db['password'].encode('utf-8')):
             # Crear objeto de usuario sin incluir  passqword
             usuario = {
                 'id': usuario_db['id'],
@@ -62,7 +68,38 @@ def login():
                 'usuario': usuario
             })
         
-        return jsonify({'error': 'Credenciales inválidas'}), 401
+        return jsonify({'error': 'Credenciales invalidas'}), 401
         
     except Exception as e:
         return jsonify({'error': f'Error en el servidor: {str(e)}'}), 500
+    
+def login_cli():
+    print("\n=== Login CLI ===")
+    username = input("Usuario: ")
+    password = input("Contraseña: ")
+
+    try:
+        response = requests.post(
+            "http://localhost:5001/login",
+            json={"username": username, "password": password},
+            headers={"Content-Type": "application/json"}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            print("\n Login exitoso!")
+            print(f"Token: {data['token']}")
+            print(f"Usuario: {data['usuario']['username']}")
+            print(f"Rol: {data['usuario']['rol']}")
+        else:
+            print(f"\n Error: {response.json().get('error', 'Credenciales inválidas')}")
+
+    except Exception as e:
+        print(f"\n Error de conexión: {str(e)}")
+
+if __name__ == '__main__':
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == '--cli':
+        login_cli()
+    else:
+        app.run(debug=True, port=5001)
