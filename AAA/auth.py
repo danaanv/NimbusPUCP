@@ -4,7 +4,6 @@ import bcrypt
 from flask import Flask, jsonify, request
 import mysql.connector  
 import os
-import requests
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = "clave_super_secreta_123"
@@ -12,7 +11,6 @@ app.config['JWT_SECRET_KEY'] = "clave_super_secreta_123"
 JWT_SECRET_KEY = "clave_super_secreta_123"
 
 def obtener_conexion_db():
-    
     return mysql.connector.connect(
         host=os.environ.get('DB_HOST', 'localhost'),
         user=os.environ.get('DB_USER', 'root'),
@@ -29,6 +27,17 @@ def generar_token(usuario):
     }
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
 
+# Función para verificar el token
+def verificar_token(token):
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
+@app.route('/login', methods=['POST'])
 def login():
     auth_data = request.get_json()
     username = auth_data.get('username')
@@ -40,7 +49,6 @@ def login():
     try:
         conn = obtener_conexion_db()
         cursor = conn.cursor(dictionary=True)
-        
         
         cursor.execute(
             "SELECT id, username, password, rol FROM usuarios WHERE username = %s",
@@ -72,34 +80,21 @@ def login():
         
     except Exception as e:
         return jsonify({'error': f'Error en el servidor: {str(e)}'}), 500
+
+# Nueva ruta para verificar token
+@app.route('/verify-token', methods=['GET'])
+def verify_token():
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Token no proporcionado correctamente'}), 401
     
-def login_cli():
-    print("\n=== Login CLI ===")
-    username = input("Usuario: ")
-    password = input("Contraseña: ")
-
-    try:
-        response = requests.post(
-            "http://localhost:5001/login",
-            json={"username": username, "password": password},
-            headers={"Content-Type": "application/json"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            print("\n Login exitoso!")
-            print(f"Token: {data['token']}")
-            print(f"Usuario: {data['usuario']['username']}")
-            print(f"Rol: {data['usuario']['rol']}")
-        else:
-            print(f"\n Error: {response.json().get('error', 'Credenciales inválidas')}")
-
-    except Exception as e:
-        print(f"\n Error de conexión: {str(e)}")
+    token = auth_header.split(' ')[1]
+    payload = verificar_token(token)
+    
+    if payload:
+        return jsonify({'valid': True, 'user': payload}), 200
+    else:
+        return jsonify({'error': 'Token inválido o expirado'}), 401
 
 if __name__ == '__main__':
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == '--cli':
-        login_cli()
-    else:
-        app.run(debug=True, port=5001)
+    app.run(debug=True, port=5001)
