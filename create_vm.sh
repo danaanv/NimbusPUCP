@@ -34,10 +34,10 @@ mkdir -p "$IMAGES_DIR"
 if [ ! -f "$BASE_IMAGE" ]; then
     echo "Imagen base $BASE_IMAGE no encontrada. Descargando..."
     
-    # URL de la imagen base (Ubuntu 22.04 minimal)
+    
     IMAGE_URL="https://cloud-images.ubuntu.com/minimal/releases/jammy/release/ubuntu-22.04-minimal-cloudimg-amd64.img"
     
-    # Descargar la imagen
+  
     wget -O "$BASE_IMAGE" "$IMAGE_URL"
     
     if [ $? -ne 0 ]; then
@@ -48,7 +48,7 @@ if [ ! -f "$BASE_IMAGE" ]; then
         
         if [ $? -ne 0 ]; then
             echo "Error al descargar la imagen alternativa. Verificando imágenes locales..."
-            # Buscar si hay alguna imagen qcow2 en el sistema que podamos usar
+            
             SYSTEM_IMAGES=$(find /var/lib/libvirt/images -name "*.qcow2" | head -1)
             if [ -n "$SYSTEM_IMAGES" ]; then
                 echo "Usando imagen local: $SYSTEM_IMAGES"
@@ -62,12 +62,12 @@ if [ ! -f "$BASE_IMAGE" ]; then
     
     echo "Imagen base descargada correctamente en $BASE_IMAGE"
     
-    # Opcionalmente, redimensionar la imagen para que tenga más espacio
+   
     qemu-img resize "$BASE_IMAGE" +5G
     echo "Imagen redimensionada a 5GB adicionales"
 fi
 
-# Crear la imagen de la VM a partir de la imagen base
+
 if [ ! -f "$VM_IMAGE" ]; then
     echo "Creando imagen para $VM_NAME..."
     qemu-img create -f qcow2 -b "$BASE_IMAGE" "$VM_IMAGE" 10G
@@ -141,7 +141,7 @@ rm $VM_XML
 echo "VM $VM_NAME creada e iniciada con éxito en VLAN $VLAN_ID."
 echo "Puedes acceder a la consola VNC en: $HOSTNAME:59${VNC_PORT}0"
 
-# Mostrar resumen de la VM
+
 virsh dominfo $VM_NAME
 
 exit 0
